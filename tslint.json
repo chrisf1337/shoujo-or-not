@@ -8,7 +8,8 @@
       "quotemark": [true, "single", "jsx-double", "avoid-escape"],
       "no-console": [false],
       "interface-name": [false],
-      "triple-equals": [true, "allow-null-check", "allow-undefined-check"]
+      "triple-equals": [true, "allow-null-check", "allow-undefined-check"],
+      "no-var-requires": false,
     },
     "rulesDirectory": []
 }

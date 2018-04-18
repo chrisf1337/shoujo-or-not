@@ -10,18 +10,14 @@ export interface StatsUpdate {
   correct: boolean;
 }
 
-export interface IManga {
+export interface Manga {
   id: number;
   name: string;
   url: string;
   isShoujo: boolean;
 }
 
-export class Manga {
-  constructor(
-    public readonly id: number,
-    public readonly name: string,
-    public readonly url: string,
-    public readonly isShoujo: boolean,
-  ) {}
+export interface MangaAndPage {
+  manga: Manga;
+  pageUrl: string;
 }

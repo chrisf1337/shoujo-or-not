@@ -6,7 +6,6 @@
   "scripts": {
     "tsc:watch": "tsc -w",
     "webpack:watch": "webpack --watch",
-    "webpack-dev-server": "webpack-dev-server --content-base dist",
     "server:watch": "nodemon --ignore dist/client/**/* dist/server/server/server.js"
   },
   "devDependencies": {
@@ -39,6 +38,7 @@
     "node-fetch": "^2.1.2",
     "pg": "^7.4.1",
     "react": "^16.3.2",
-    "react-dom": "^16.3.2"
+    "react-dom": "^16.3.2",
+    "source-map-support": "^0.5.4"
   }
 }

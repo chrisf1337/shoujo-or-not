@@ -1,29 +1,43 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
+import _ from 'lodash';
 
-import { IManga, Manga } from '../common';
-import { Hello } from './Hello';
+import { MangaAndPage, Manga } from '../common';
+import { MangaQuiz } from './MangaQuiz';
+
+interface AppState {
+  mangaAndPages: MangaAndPage[];
+}
 
 // 'HelloProps' describes the shape of props.
 // State is never set so we use the '{}' type.
-export class App extends React.Component<{}, {}> {
+export class App extends React.Component<{}, AppState> {
+  constructor(props: {}) {
+    super(props);
+    this.state = {
+      mangaAndPages: [],
+    };
+  }
+
   public componentDidMount() {
-    fetch('/api/randommanga?n=20')
+    fetch('/api/randommanga?n=5')
       .then((resp) => resp.json())
-      .then((json: IManga[]) => {
-        const mga: Manga[] = [];
-        for (const m of json) {
-          mga.push(new Manga(m.id, m.name, m.url, m.isShoujo));
-        }
+      .then((json: MangaAndPage[]) => {
         this.setState((prevState, _) => {
-          return { ...prevState, manga: mga };
+          return { ...prevState, mangaAndPages: json };
         });
       })
       .catch((e) => console.error(e));
   }
-
   public render() {
-    return <Hello compiler="compiler" framework="react"/>;
+    console.log(this.state);
+    return (
+      <div>
+        {this.state.mangaAndPages.map((mangaAndPage) => (
+          <MangaQuiz key={mangaAndPage.manga.id} mangaAndPage={mangaAndPage} />
+        ))}
+      </div>
+    );
   }
 }
 
