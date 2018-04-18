@@ -1,35 +1,12 @@
 import bodyParser from 'body-parser';
 import express from 'express';
-import * as _ from 'lodash';
+import _ from 'lodash';
+import fetch from 'node-fetch';
+import { IManga, Manga, Stats, StatsUpdate } from '../common';
 import { pool } from './db';
+import { urlToDom } from './fetchimgs';
 
-class Manga {
-  constructor(
-    public readonly id: number,
-    public readonly name: string,
-    public readonly url: string,
-    public readonly isShoujo: boolean,
-  ) {}
-}
-
-interface IManga {
-  id: number;
-  name: string;
-  url: string;
-  isShoujo: boolean;
-}
-
-interface IStats {
-  id: number;
-  manga: number;
-  correct: number;
-  total: number;
-}
-
-interface StatsUpdate {
-  id: number;
-  correct: boolean;
-}
+const URL_BASE = 'https://www.mangareader.net';
 
 let manga: Manga[];
 (async () => {
@@ -83,8 +60,37 @@ app.get('/api/randommanga', (req, res) => {
   }
   console.log(n);
   const sample = _.sampleSize(manga, n);
-  res.setHeader('Content-Type', 'application/json');
-  res.send(JSON.stringify(sample));
+  Promise.all(
+    sample.map((m) =>
+      urlToDom(m.url).then(
+        (dom) =>
+          URL_BASE +
+          _.sample(dom.window.document.querySelectorAll('#listing > tbody > tr > td:first-child'))
+            .children[1].href,
+      ),
+    ),
+  )
+    .then((urls) =>
+      Promise.all(
+        urls.map((url) =>
+          urlToDom(url).then((dom) => {
+            const pages = dom.window.document.getElementById('selectpage').children[0].children.length;
+            let pageNum = 1;
+            if (pages >= 3) {
+              pageNum = _.random(2, pages - 1);
+            } else {
+              pageNum = _.random(1, pages);
+            }
+            return url + `/${pageNum}`;
+          }),
+        ),
+      ),
+    )
+    .then((urls) => {
+      console.log(urls);
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify(sample));
+    });
 });
 
 // Given a list of StatsUpdate objects, updates the stats db
@@ -92,8 +98,7 @@ app.post('/api/update', (req, res) => {
   const update: StatsUpdate = req.body;
   console.log(update);
   (async () => {
-    const rows: IStats[] = (await pool.query(`select * from stats where id = $1`, [update.id]))
-      .rows;
+    const rows: Stats[] = (await pool.query(`select * from stats where id = $1`, [update.id])).rows;
     if (rows.length === 0) {
       throw new Error(`no manga with id ${update.id}`);
     }
@@ -111,7 +116,7 @@ app.post('/api/update', (req, res) => {
       )).rows[0];
     }
   })()
-    .then((row: IStats) => res.status(200).send(JSON.stringify(row)))
+    .then((row: Stats) => res.status(200).send(JSON.stringify(row)))
     .catch((err) => res.status(404).send(err.toString()));
 });
 

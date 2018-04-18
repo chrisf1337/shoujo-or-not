@@ -7,7 +7,7 @@
     "tsc:watch": "tsc -w",
     "webpack:watch": "webpack --watch",
     "webpack-dev-server": "webpack-dev-server --content-base dist",
-    "server:watch": "nodemon dist/server/server.js"
+    "server:watch": "nodemon --ignore dist/client/**/* dist/server/server/server.js"
   },
   "devDependencies": {
     "awesome-typescript-loader": "^5.0.0",
@@ -24,15 +24,19 @@
   "dependencies": {
     "@types/body-parser": "^1.16.8",
     "@types/express": "^4.11.1",
+    "@types/jsdom": "^11.0.4",
     "@types/lodash": "^4.14.107",
     "@types/node": "^9.6.5",
+    "@types/node-fetch": "^1.6.8",
     "@types/pg": "^7.4.6",
     "@types/react": "^16.3.11",
     "@types/react-dom": "^16.0.5",
     "body-parser": "^1.18.2",
     "cloudscraper": "^1.5.0",
     "express": "^4.16.3",
+    "jsdom": "^11.8.0",
     "lodash": "^4.17.5",
+    "node-fetch": "^2.1.2",
     "pg": "^7.4.1",
     "react": "^16.3.2",
     "react-dom": "^16.3.2"

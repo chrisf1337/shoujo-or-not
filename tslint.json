@@ -5,7 +5,7 @@
     ],
     "jsRules": {},
     "rules": {
-      "quotemark": [true, "single", "avoid-escape"],
+      "quotemark": [true, "single", "jsx-double", "avoid-escape"],
       "no-console": [false],
       "interface-name": [false],
       "triple-equals": [true, "allow-null-check", "allow-undefined-check"]
