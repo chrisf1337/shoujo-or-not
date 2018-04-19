@@ -3,6 +3,7 @@ import { MangaAndPage, SelectedOption } from '../common';
 const style = require('./style.css');
 
 interface MangaQuizProps {
+  index: number;
   mangaAndPage: MangaAndPage;
   selectedOption: SelectedOption;
   refresh: () => void;
@@ -20,6 +21,7 @@ export class MangaQuiz extends React.Component<MangaQuizProps, {}> {
         <div>
           <img onLoad={this.props.imgOnLoad} src={this.props.mangaAndPage.pageUrl} />
         </div>
+        {this.props.index + 1}.
         <label>
           <input
             type="radio"

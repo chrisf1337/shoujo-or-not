@@ -72,6 +72,20 @@ export class Results extends React.Component<{}, ResultsState> {
         (acc, res) => (res.correct ? [acc[0] + 1, acc[1] + 1] : [acc[0], acc[1] + 1]),
         [0, 0],
       );
+      const [shoujoCorrect, shoujoTotal] = results.reduce(
+        (acc, res) => {
+          if (res.manga.isShoujo) {
+            if (res.manga.correct) {
+              return [acc[0] + 1, acc[1] + 1];
+            } else {
+              return [acc[0], acc[1] + 1];
+            }
+          } else {
+            return acc;
+          }
+        },
+        [0, 0],
+      );
       return (
         <div>
           <div>{results.map((r, i) => <Result key={i} result={r} />)}</div>
@@ -79,8 +93,11 @@ export class Results extends React.Component<{}, ResultsState> {
             Correct: {correct} out of {total} ({Math.round(correct / total * 100)}%)
           </div>
           <div>
-            On average, users have been correct {Math.round(userAggregateStats.average * 100)}% of the
-            time.
+            Correct for shoujo: {shoujoCorrect} out of {shoujoTotal} ({Math.round(correct / total * 100)}%)
+          </div>
+          <div>
+            On average, users have been correct {Math.round(userAggregateStats.average * 100)}% of
+            the time.
           </div>
           <a href="/">Try again!</a>
         </div>

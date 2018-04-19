@@ -12,7 +12,7 @@ interface AppState {
   loading: boolean;
 }
 
-const N_MANGA = 5;
+const N_MANGA = 20;
 
 // 'HelloProps' describes the shape of props.
 // State is never set so we use the '{}' type.
@@ -121,6 +121,7 @@ export class QuizApp extends React.Component<{}, AppState> {
         {this.state.mangaAndPages.map((mangaAndPage, i) => (
           <MangaQuiz
             key={i}
+            index={i}
             mangaAndPage={mangaAndPage}
             selectedOption={this.state.answers[i]}
             refresh={this.refresh(i)}
