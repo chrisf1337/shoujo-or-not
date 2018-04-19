@@ -31,3 +31,15 @@ export async function fetchImg(url: string): Promise<string> {
   const img = page.window.document.getElementById('img');
   return img.src;
 }
+
+export async function fetchImgAndRetry(currManga: Manga, initialUrl: string, manga: Manga[]): Promise<[Manga, string]> {
+  try {
+    return [currManga, await fetchImg(initialUrl)];
+  } catch (e) {
+    console.error(`${currManga.name} ${currManga.url} failed!`);
+    console.error(e);
+    const mga = _.sample(manga)!;
+    console.log(`Retrying with ${mga.name} ${mga.url}`);
+    return await fetchImgAndRetry(mga, mga.url, manga);
+  }
+}

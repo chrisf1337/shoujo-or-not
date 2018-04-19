@@ -1,19 +1,11 @@
 require('source-map-support').install();
 import bodyParser from 'body-parser';
 import express from 'express';
-import handlebars from 'handlebars';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import {
-  Manga,
-  MangaAndPage,
-  QuizAnswer,
-  QuizResponse,
-  QuizResult,
-  UserStats,
-} from '../common';
+import { Manga, MangaAndPage, QuizAnswer, QuizResponse, QuizResult, UserStats } from '../common';
 import { dbRowToManga, pool } from './db';
-import { fetchImg } from './fetchimgs';
+import { fetchImg, fetchImgAndRetry } from './fetchimgs';
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
 
@@ -47,12 +39,14 @@ const app = express();
 app.use('/', express.static('public'));
 app.use('/dist/client', express.static('dist/client'));
 app.use(bodyParser.json());
-app.use(session({
-  store: new RedisStore(),
-  secret: 'keyboard cat',
-  resave: true,
-  saveUninitialized: true,
-}));
+app.use(
+  session({
+    store: new RedisStore(),
+    secret: 'keyboard cat',
+    resave: true,
+    saveUninitialized: true,
+  }),
+);
 
 // Returns a list of n random manga
 app.get('/api/randommanga', (req, res) => {
@@ -64,11 +58,11 @@ app.get('/api/randommanga', (req, res) => {
   }
   console.log(n);
   const sample = _.sampleSize(manga, n);
-  Promise.all(sample.map((m) => fetchImg(m.url))).then((urls) => {
-    const response: MangaAndPage[] = [];
-    for (let i = 0; i < n; i++) {
-      response.push({ mangaId: sample[i].id, pageUrl: urls[i] });
-    }
+  Promise.all(sample.map((m) => fetchImgAndRetry(m, m.url, manga))).then((mangaAndUrls) => {
+    const response: MangaAndPage[] = mangaAndUrls.map(([m, url]) => ({
+      mangaId: m.id,
+      pageUrl: url,
+    }));
     res.header('Content-Type', 'application/json').send(JSON.stringify(response));
   });
 });
@@ -109,17 +103,21 @@ app.post('/api/update', (req, res) => {
         console.log(manga);
         console.log(quizAnswer);
         if (quizAnswer.isShoujo === manga.isShoujo) {
-          manga = dbRowToManga((await pool.query(
-            `update manga set correct = correct + 1, total = total + 1
+          manga = dbRowToManga(
+            (await pool.query(
+              `update manga set correct = correct + 1, total = total + 1
             where id = $1 returning *`,
-            [manga.id],
-          )).rows[0]);
+              [manga.id],
+            )).rows[0],
+          );
         } else {
-          manga = dbRowToManga((await pool.query(
-            `update manga set correct = correct, total = total + 1
+          manga = dbRowToManga(
+            (await pool.query(
+              `update manga set correct = correct, total = total + 1
             where id = $1 returning *`,
-            [manga.id],
-          )).rows[0]);
+              [manga.id],
+            )).rows[0],
+          );
         }
         return { manga, correct: quizAnswer.isShoujo === manga.isShoujo };
       })(),
@@ -149,11 +147,12 @@ app.post('/api/update', (req, res) => {
           total += stats.total;
         }
 
-        const quizResponse: QuizResponse = { results, stats: { average: total === 0 ? 0 : correct / total } };
+        const quizResponse: QuizResponse = {
+          results,
+          stats: { average: total === 0 ? 0 : correct / total },
+        };
         req.session!.quizResponse = quizResponse;
-        res
-          .status(200)
-          .send(JSON.stringify(quizResponse));
+        res.status(200).send(JSON.stringify(quizResponse));
       })(),
     )
     .catch((err) => res.status(404).send(err.toString()));
