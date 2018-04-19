@@ -1,17 +1,18 @@
 require('source-map-support').install();
 import bodyParser from 'body-parser';
 import express from 'express';
+import handlebars from 'handlebars';
 import _ from 'lodash';
 import fetch from 'node-fetch';
 import {
   Manga,
+  MangaAndPage,
   QuizAnswer,
   QuizResponse,
-  MangaAndPage,
   QuizResult,
   UserStats,
 } from '../common';
-import { pool, dbRowToManga } from './db';
+import { dbRowToManga, pool } from './db';
 import { fetchImg } from './fetchimgs';
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
@@ -81,7 +82,7 @@ app.get('/api/randompage', (req, res) => {
   }
   console.log(`id: ${id}`);
   (async () => {
-    let rows = (await pool.query(`select * from manga where id = $1`, [id])).rows;
+    const rows = (await pool.query(`select * from manga where id = $1`, [id])).rows;
     if (rows.length === 0) {
       throw new Error(`manga id ${id} not found`);
     }
@@ -148,7 +149,7 @@ app.post('/api/update', (req, res) => {
           total += stats.total;
         }
 
-        const quizResponse = { results, stats: { average: total === 0 ? 0 : correct / total } };
+        const quizResponse: QuizResponse = { results, stats: { average: total === 0 ? 0 : correct / total } };
         req.session!.quizResponse = quizResponse;
         res
           .status(200)
@@ -156,6 +157,14 @@ app.post('/api/update', (req, res) => {
       })(),
     )
     .catch((err) => res.status(404).send(err.toString()));
+});
+
+app.get('/api/results', (req, res) => {
+  if (req.session!.quizResponse == null) {
+    res.header(404).send('No results found');
+    return;
+  }
+  res.contentType('application/json').send(JSON.stringify(req.session!.quizResponse));
 });
 
 app.listen(3000, () => console.log('Listening on port 3000'));

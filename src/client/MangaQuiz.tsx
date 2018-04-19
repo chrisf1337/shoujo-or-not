@@ -8,6 +8,7 @@ interface MangaQuizProps {
   refresh: () => void;
   refreshing: boolean;
   handleOptionChange: (ev: React.ChangeEvent<HTMLInputElement>) => void;
+  imgOnLoad: (ev: any) => void;
 }
 
 // 'HelloProps' describes the shape of props.
@@ -17,7 +18,7 @@ export class MangaQuiz extends React.Component<MangaQuizProps, {}> {
     return (
       <div>
         <div>
-          <img src={this.props.mangaAndPage.pageUrl} />
+          <img onLoad={this.props.imgOnLoad} src={this.props.mangaAndPage.pageUrl} />
         </div>
         <label>
           <input

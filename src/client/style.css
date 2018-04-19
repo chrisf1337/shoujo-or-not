@@ -5,3 +5,15 @@ input[type="radio"] {
 .refresh-button {
   margin: 0px 20px;
 }
+
+.result {
+  margin: 20px 0px;
+}
+
+.incorrect {
+  color: red;
+}
+
+.correct {
+  color: green;
+}
