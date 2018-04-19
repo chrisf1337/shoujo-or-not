@@ -71,7 +71,7 @@ export class QuizApp extends React.Component<{}, AppState> {
   }
 
   private imgOnLoad(i: number) {
-    return (ev) => {
+    return (ev: any) => {
       const refreshing = this.state.refreshing;
       refreshing[i] = false;
       this.setState((prevState) => {

@@ -39,7 +39,7 @@ interface ResultsState {
 }
 
 export class Results extends React.Component<{}, ResultsState> {
-  constructor(props) {
+  constructor(props: {}) {
     super(props);
     this.state = {
       results: null,
