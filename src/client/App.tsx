@@ -2,12 +2,16 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import _ from 'lodash';
 
-import { MangaAndPage, Manga } from '../common';
+import { MangaAndPage, Manga, SelectedOption, QuizAnswer } from '../common';
 import { MangaQuiz } from './MangaQuiz';
 
 interface AppState {
   mangaAndPages: MangaAndPage[];
+  refreshing: boolean[];
+  answers: SelectedOption[];
 }
+
+const N_MANGA = 5;
 
 // 'HelloProps' describes the shape of props.
 // State is never set so we use the '{}' type.
@@ -16,26 +20,103 @@ export class App extends React.Component<{}, AppState> {
     super(props);
     this.state = {
       mangaAndPages: [],
+      refreshing: [],
+      answers: [],
     };
+    this.refresh.bind(this);
+    this.handleOptionChange.bind(this);
   }
 
   public componentDidMount() {
-    fetch('/api/randommanga?n=5')
+    fetch(`/api/randommanga?n=${N_MANGA}`, {
+      credentials: 'include',
+    })
       .then((resp) => resp.json())
       .then((json: MangaAndPage[]) => {
-        this.setState((prevState, _) => {
-          return { ...prevState, mangaAndPages: json };
+        this.setState((prevState) => {
+          return {
+            ...prevState,
+            mangaAndPages: json,
+            refreshing: new Array(N_MANGA).fill(false),
+            answers: new Array(N_MANGA).fill(SelectedOption.No),
+          };
         });
       })
       .catch((e) => console.error(e));
   }
+
+  private refresh(i: number): () => void {
+    return () => {
+      const refreshing = this.state.refreshing;
+      refreshing[i] = true;
+      this.setState((prevState) => {
+        return { ...prevState, refreshing };
+      });
+      const mangaAndPages = this.state.mangaAndPages;
+      const mangaId = mangaAndPages[i].mangaId;
+      fetch(`/api/randompage?id=${mangaId}`, {
+        credentials: 'include',
+      })
+        .then((resp) => resp.json())
+        .then((newUrl) => {
+          mangaAndPages[i].pageUrl = newUrl;
+          const refreshing = this.state.refreshing;
+          refreshing[i] = false;
+          this.setState((prevState) => {
+            return { ...prevState, mangaAndPages, refreshing };
+          });
+        });
+    };
+  }
+
+  private handleOptionChange(i: number) {
+    return (ev: React.ChangeEvent<HTMLInputElement>) => {
+      ev.persist();
+      const answers = this.state.answers;
+      answers[i] = ev.target.value === 'yes' ? SelectedOption.Yes : SelectedOption.No;
+      this.setState((prevState, _) => {
+        return {
+          ...prevState,
+          answers,
+        };
+      });
+    };
+  }
+
+  private submit() {
+    const answers: QuizAnswer[] = [];
+    for (let i = 0; i < N_MANGA; i++) {
+      answers.push({
+        id: this.state.mangaAndPages[i].mangaId,
+        isShoujo: this.state.answers[i] === SelectedOption.Yes,
+      });
+    }
+    fetch(`/api/update`, {
+      body: JSON.stringify(answers),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((resp) => resp.json())
+      .then((json) => console.log(json));
+  }
+
   public render() {
-    console.log(this.state);
     return (
       <div>
-        {this.state.mangaAndPages.map((mangaAndPage) => (
-          <MangaQuiz key={mangaAndPage.manga.id} mangaAndPage={mangaAndPage} />
+        {this.state.mangaAndPages.map((mangaAndPage, i) => (
+          <MangaQuiz
+            key={i}
+            mangaAndPage={mangaAndPage}
+            selectedOption={this.state.answers[i]}
+            refresh={this.refresh(i)}
+            refreshing={this.state.refreshing[i]}
+            handleOptionChange={this.handleOptionChange(i)}
+          />
         ))}
+        <button onClick={this.submit.bind(this)}>Submit</button>
       </div>
     );
   }

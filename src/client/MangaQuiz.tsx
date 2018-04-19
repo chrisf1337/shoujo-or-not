@@ -1,41 +1,18 @@
 import * as React from 'react';
-import { MangaAndPage } from '../common';
+import { MangaAndPage, SelectedOption } from '../common';
+const style = require('./style.css');
 
 interface MangaQuizProps {
   mangaAndPage: MangaAndPage;
-}
-
-interface MangaQuizState {
   selectedOption: SelectedOption;
-}
-
-enum SelectedOption {
-  Yes,
-  No,
-  None,
+  refresh: () => void;
+  refreshing: boolean;
+  handleOptionChange: (ev: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 // 'HelloProps' describes the shape of props.
 // State is never set so we use the '{}' type.
-export class MangaQuiz extends React.Component<MangaQuizProps, MangaQuizState> {
-  constructor(props: MangaQuizProps) {
-    super(props);
-    this.state = {
-      selectedOption: SelectedOption.None,
-    };
-    this.handleOptionChange = this.handleOptionChange.bind(this);
-  }
-
-  handleOptionChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    ev.persist();
-    this.setState((prevState, _) => {
-      return {
-        ...prevState,
-        selectedOption: ev.target.value === 'yes' ? SelectedOption.Yes : SelectedOption.No,
-      };
-    });
-  }
-
+export class MangaQuiz extends React.Component<MangaQuizProps, {}> {
   public render() {
     return (
       <div>
@@ -46,8 +23,8 @@ export class MangaQuiz extends React.Component<MangaQuizProps, MangaQuizState> {
           <input
             type="radio"
             value="yes"
-            checked={this.state.selectedOption === SelectedOption.Yes}
-            onChange={this.handleOptionChange}
+            checked={this.props.selectedOption === SelectedOption.Yes}
+            onChange={this.props.handleOptionChange}
           />
           yes
         </label>
@@ -55,11 +32,13 @@ export class MangaQuiz extends React.Component<MangaQuizProps, MangaQuizState> {
           <input
             type="radio"
             value="no"
-            checked={this.state.selectedOption === SelectedOption.No}
-            onChange={this.handleOptionChange}
+            checked={this.props.selectedOption === SelectedOption.No}
+            onChange={this.props.handleOptionChange}
           />
           no
         </label>
+        <button onClick={this.props.refresh} className="refresh-button">Refresh image</button>
+        {this.props.refreshing ? <span>refreshing...</span> : null}
       </div>
     );
   }

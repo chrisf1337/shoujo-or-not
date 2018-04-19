@@ -1,13 +1,26 @@
-export interface Stats {
+export interface UserStats {
   id: number;
-  manga: number;
   correct: number;
   total: number;
 }
 
-export interface StatsUpdate {
+export interface QuizAnswer {
   id: number;
+  isShoujo: boolean;
+}
+
+export interface QuizResult {
+  manga: Manga;
   correct: boolean;
+}
+
+export interface UserAggregateStats {
+  average: number;
+}
+
+export interface QuizResponse {
+  results: QuizResult[];
+  stats: UserAggregateStats;
 }
 
 export interface Manga {
@@ -15,9 +28,16 @@ export interface Manga {
   name: string;
   url: string;
   isShoujo: boolean;
+  correct: number;
+  total: number;
 }
 
 export interface MangaAndPage {
-  manga: Manga;
+  mangaId: number;
   pageUrl: string;
+}
+
+export enum SelectedOption {
+  Yes,
+  No,
 }

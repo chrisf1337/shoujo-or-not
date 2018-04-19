@@ -3,9 +3,18 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import { Manga, Stats, StatsUpdate, MangaAndPage } from '../common';
-import { pool } from './db';
+import {
+  Manga,
+  QuizAnswer,
+  QuizResponse,
+  MangaAndPage,
+  QuizResult,
+  UserStats,
+} from '../common';
+import { pool, dbRowToManga } from './db';
 import { fetchImg } from './fetchimgs';
+const session = require('express-session');
+const RedisStore = require('connect-redis')(session);
 
 let manga: Manga[];
 (async () => {
@@ -13,11 +22,7 @@ let manga: Manga[];
     id serial primary key,
     name text not null,
     url text not null,
-    isshoujo boolean not null
-  )`);
-  await pool.query(`create table if not exists mangastats (
-    id serial primary key,
-    manga integer references manga,
+    isshoujo boolean not null,
     correct integer not null default 0,
     total integer not null default 0
   )`);
@@ -26,20 +31,9 @@ let manga: Manga[];
     correct integer not null default 0,
     total integer not null default 0
   )`);
-  const manga: Manga[] = (await pool.query('select * from manga;')).rows;
-  const promises = [];
-  for (const m of manga) {
-    promises.push(
-      pool.query(
-        `insert into mangastats (manga)
-        select $1 where not exists (select manga from mangastats where manga = $1)`,
-        [m.id],
-      ),
-    );
-  }
-  await Promise.all(promises).catch((e) => {
-    throw e;
-  });
+  const manga: Manga[] = (await pool.query('select * from manga;')).rows.map((row) =>
+    dbRowToManga(row),
+  );
   return manga;
 })()
   .then((m) => {
@@ -52,9 +46,16 @@ const app = express();
 app.use('/', express.static('public'));
 app.use('/dist/client', express.static('dist/client'));
 app.use(bodyParser.json());
+app.use(session({
+  store: new RedisStore(),
+  secret: 'keyboard cat',
+  resave: true,
+  saveUninitialized: true,
+}));
 
 // Returns a list of n random manga
 app.get('/api/randommanga', (req, res) => {
+  console.log(req.session!.quizResponse);
   const n = req.query.n;
   if (n == undefined || n <= 0) {
     res.status(400).send('n must be positive');
@@ -65,7 +66,7 @@ app.get('/api/randommanga', (req, res) => {
   Promise.all(sample.map((m) => fetchImg(m.url))).then((urls) => {
     const response: MangaAndPage[] = [];
     for (let i = 0; i < n; i++) {
-      response.push({ manga: sample[i], pageUrl: urls[i] });
+      response.push({ mangaId: sample[i].id, pageUrl: urls[i] });
     }
     res.header('Content-Type', 'application/json').send(JSON.stringify(response));
   });
@@ -84,7 +85,7 @@ app.get('/api/randompage', (req, res) => {
     if (rows.length === 0) {
       throw new Error(`manga id ${id} not found`);
     }
-    const manga: Manga = rows[0];
+    const manga: Manga = dbRowToManga(rows[0]);
     return fetchImg(manga.url);
   })()
     .then((url) => res.header('Content-Type', 'application/json').send(JSON.stringify(url)))
@@ -93,34 +94,67 @@ app.get('/api/randompage', (req, res) => {
 
 // Given a list of StatsUpdate objects, updates the stats db
 app.post('/api/update', (req, res) => {
-  const updates: StatsUpdate[] = req.body;
-  console.log(updates);
+  const quizAnswers: QuizAnswer[] = req.body;
   Promise.all(
-    updates.map((update) =>
+    quizAnswers.map((quizAnswer) =>
       (async () => {
-        const rows: Stats[] = (await pool.query(`select * from mangastats where id = $1`, [
-          update.id,
+        const rows: Manga[] = (await pool.query(`select * from manga where id = $1`, [
+          quizAnswer.id,
         ])).rows;
         if (rows.length === 0) {
-          throw new Error(`no manga with id ${update.id}`);
+          throw new Error(`no manga with id ${quizAnswer.id}`);
         }
-        if (update.correct) {
-          return (await pool.query(
-            `update mangastats set correct = correct + 1, total = total + 1
+        let manga = dbRowToManga(rows[0]);
+        console.log(manga);
+        console.log(quizAnswer);
+        if (quizAnswer.isShoujo === manga.isShoujo) {
+          manga = dbRowToManga((await pool.query(
+            `update manga set correct = correct + 1, total = total + 1
             where id = $1 returning *`,
-            [update.id],
-          )).rows[0];
+            [manga.id],
+          )).rows[0]);
         } else {
-          return (await pool.query(
-            `update mangastats set correct = correct, total = total + 1
+          manga = dbRowToManga((await pool.query(
+            `update manga set correct = correct, total = total + 1
             where id = $1 returning *`,
-            [update.id],
-          )).rows[0];
+            [manga.id],
+          )).rows[0]);
         }
+        return { manga, correct: quizAnswer.isShoujo === manga.isShoujo };
       })(),
     ),
   )
-    .then((rows: Stats[]) => res.status(200).send(JSON.stringify(rows)))
+    .then((results: QuizResult[]) =>
+      (async () => {
+        console.log(results);
+        let correct = 0;
+        let total = results.length;
+        for (const result of results) {
+          if (result.correct) {
+            correct += 1;
+          }
+        }
+        if (total > 0) {
+          await pool.query(`insert into userstats (correct, total) values ($1, $2)`, [
+            correct,
+            total,
+          ]);
+        }
+        const userStats: UserStats[] = (await pool.query(`select * from userstats`)).rows;
+        correct = 0;
+        total = 0;
+        for (const stats of userStats) {
+          correct += stats.correct;
+          total += stats.total;
+        }
+
+        const quizResponse = { results, stats: { average: total === 0 ? 0 : correct / total } };
+        req.session!.quizResponse = quizResponse;
+        res
+          .status(200)
+          .send(JSON.stringify(quizResponse));
+      })(),
+    )
     .catch((err) => res.status(404).send(err.toString()));
 });
 
