@@ -117,6 +117,7 @@ export class QuizApp extends React.Component<{}, AppState> {
   public render() {
     return (
       <div>
+        Select "yes" if you think the manga is shoujo and "no" if you think it isn't.
         {this.state.loading ? <div>Loading...</div> : null}
         {this.state.mangaAndPages.map((mangaAndPage, i) => (
           <MangaQuiz
@@ -130,7 +131,7 @@ export class QuizApp extends React.Component<{}, AppState> {
             imgOnLoad={this.imgOnLoad(i)}
           />
         ))}
-        <button onClick={this.submit.bind(this)}>Submit</button>
+        <div><button onClick={this.submit.bind(this)}>Submit</button></div>
       </div>
     );
   }
